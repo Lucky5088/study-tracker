@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Study Tracker</title>
+<meta name="theme-color" content="#111827">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<style>
+  :root{
+    --ink:#111827;
+    --ink-soft:#1f2937;
+    --line:#2d3748;
+    --text:#f6f4ee;
+    --text-soft:#9ca3af;
+    --accent:#c65d2e;
+    --accent-soft:#e8b48f;
+    --mono: 'Courier New', monospace;
+    --serif: 'Georgia', 'Times New Roman', serif;
+  }
+  *{box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent;}
+  body{
+    background:var(--ink);
+    color:var(--text);
+    font-family:var(--serif);
+    min-height:100vh;
+    padding-bottom:40px;
+  }
+  header{
+    padding:28px 20px 20px;
+    border-bottom:1px solid var(--line);
+  }
+  .eyebrow{
+    font-family:var(--mono);
+    font-size:11px;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:var(--accent);
+  }
+  h1{font-size:28px; font-weight:400; margin-top:6px;}
+  .sub{color:var(--text-soft); font-size:14px; margin-top:4px;}
+
+  .stats{
+    display:flex;
+    gap:12px;
+    padding:16px 20px;
+  }
+  .stat{
+    flex:1;
+    border:1px solid var(--line);
+    padding:12px;
+    text-align:center;
+  }
+  .stat .num{font-size:24px; font-family:var(--mono); color:var(--accent-soft);}
+  .stat .lbl{font-size:11px; color:var(--text-soft); text-transform:uppercase; letter-spacing:0.08em; margin-top:2px;}
+
+  form{
+    display:flex;
+    gap:8px;
+    padding:8px 20px 16px;
+  }
+  input[type=text]{
+    flex:1;
+    background:var(--ink-soft);
+    border:1px solid var(--line);
+    color:var(--text);
+    padding:12px 14px;
+    font-size:15px;
+    font-family:var(--serif);
+  }
+  input[type=text]:focus{outline:none; border-color:var(--accent);}
+  button{
+    background:var(--accent);
+    color:var(--text);
+    border:none;
+    padding:12px 18px;
+    font-size:15px;
+    font-family:var(--serif);
+    cursor:pointer;
+  }
+  button:active{opacity:0.8;}
+
+  ul{list-style:none; padding:0 20px;}
+  li{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:14px 0;
+    border-bottom:1px dashed var(--line);
+  }
+  .check{
+    width:22px; height:22px;
+    border:1px solid var(--accent-soft);
+    flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    font-size:14px;
+    cursor:pointer;
+  }
+  .check.done{background:var(--accent); border-color:var(--accent);}
+  .task-text{flex:1; font-size:15px;}
+  .task-text.done{color:var(--text-soft); text-decoration:line-through;}
+  .del{
+    color:var(--text-soft);
+    font-family:var(--mono);
+    font-size:12px;
+    background:none;
+    border:none;
+    padding:6px;
+    cursor:pointer;
+  }
+  .empty{
+    padding:40px 20px;
+    text-align:center;
+    color:var(--text-soft);
+    font-size:14px;
+  }
+  .install-banner{
+    margin:16px 20px;
+    padding:14px;
+    border:1px solid var(--accent);
+    font-size:13px;
+    color:var(--accent-soft);
+    display:none;
+  }
+  .install-banner.show{display:block;}
+  .install-banner button{
+    margin-top:8px;
+    font-size:13px;
+    padding:8px 14px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="eyebrow">Daily Focus</div>
+  <h1>Study Tracker</h1>
+  <div class="sub">Log today's tasks. Check them off as you go.</div>
+</header>
+
+<div class="stats">
+  <div class="stat"><div class="num" id="statTotal">0</div><div class="lbl">Tasks</div></div>
+  <div class="stat"><div class="num" id="statDone">0</div><div class="lbl">Done</div></div>
+  <div class="stat"><div class="num" id="statLeft">0</div><div class="lbl">Left</div></div>
+</div>
+
+<div class="install-banner" id="installBanner">
+  Install this app on your phone for one-tap access.
+  <br><button id="installBtn">Install App</button>
+</div>
+
+<form id="taskForm">
+  <input type="text" id="taskInput" placeholder="e.g. Read BCA Ch. 3" autocomplete="off">
+  <button type="submit">Add</button>
+</form>
+
+<ul id="taskList"></ul>
+<div class="empty" id="emptyState">No tasks yet — add your first one above.</div>
+
+<script>
+  let tasks = [];
+  let nextId = 1;
+
+  const list = document.getElementById('taskList');
+  const empty = document.getElementById('emptyState');
+  const form = document.getElementById('taskForm');
+  const input = document.getElementById('taskInput');
+
+  function render(){
+    list.innerHTML = '';
+    empty.style.display = tasks.length ? 'none' : 'block';
+
+    tasks.forEach(t => {
+      const li = document.createElement('li');
+
+      const check = document.createElement('div');
+      check.className = 'check' + (t.done ? ' done' : '');
+      check.textContent = t.done ? '✓' : '';
+      check.onclick = () => { t.done = !t.done; render(); };
+
+      const text = document.createElement('div');
+      text.className = 'task-text' + (t.done ? ' done' : '');
+      text.textContent = t.text;
+
+      const del = document.createElement('button');
+      del.className = 'del';
+      del.textContent = 'remove';
+      del.onclick = () => { tasks = tasks.filter(x => x.id !== t.id); render(); };
+
+      li.appendChild(check);
+      li.appendChild(text);
+      li.appendChild(del);
+      list.appendChild(li);
+    });
+
+    document.getElementById('statTotal').textContent = tasks.length;
+    const done = tasks.filter(t => t.done).length;
+    document.getElementById('statDone').textContent = done;
+    document.getElementById('statLeft').textContent = tasks.length - done;
+  }
+
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+    const val = input.value.trim();
+    if(!val) return;
+    tasks.push({ id: nextId++, text: val, done: false });
+    input.value = '';
+    render();
+  });
+
+  render();
+
+  // PWA install prompt
+  let deferredPrompt;
+  const banner = document.getElementById('installBanner');
+  const installBtn = document.getElementById('installBtn');
+
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    deferredPrompt = e;
+    banner.classList.add('show');
+  });
+
+  installBtn.addEventListener('click', async () => {
+    if(!deferredPrompt) return;
+    deferredPrompt.prompt();
+    await deferredPrompt.userChoice;
+    deferredPrompt = null;
+    banner.classList.remove('show');
+  });
+
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch(()=>{});
+    });
+  }
+</script>
+
+</body>
+</html>
